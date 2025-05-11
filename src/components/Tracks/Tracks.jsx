@@ -1,12 +1,9 @@
 import { useEffect, useState } from "react";
-
 import Track from "../Track/Track";
 import useStore from "../../utils/store";
 import { fetchMetadata } from "../../utils/utils";
 import TRACKS from "../../utils/TRACKS";
-
 import fetchJsonp from "fetch-jsonp";
-
 import s from "./Tracks.module.scss";
 
 const Tracks = () => {
@@ -20,12 +17,6 @@ const Tracks = () => {
       setShowTracks(true);
     }
   }, [tracks]);
-
-  // TODO : Slider (infini ou non) pour sélectionner les tracks
-
-  // TODO : Fonction de tri / filtre sur les tracks, par nom, durée...
-
-  // TODO : Récupérer les tracks du store
 
   useEffect(() => {
     fetchMetadata(TRACKS, tracks, setTracks);
@@ -76,10 +67,16 @@ const Tracks = () => {
       </div>
 
       <section
-        className={`
-      ${s.wrapper}
-      ${showTracks ? s.wrapper_visible : ""}`}
+        className={`${s.wrapper} ${showTracks ? s.wrapper_visible : ""}`}
       >
+        {/* Input à l'intérieur de la même section que les tracks */}
+        <input
+          type="text"
+          placeholder="Chercher un artiste"
+          className={s.searchInput}
+          onKeyDown={onKeyDown}
+        />
+        
         <div className={s.tracks}>
           <div className={s.header}>
             <span className={s.order}>#</span>
@@ -99,13 +96,6 @@ const Tracks = () => {
             />
           ))}
         </div>
-
-        <input
-          type="text"
-          placeholder="Chercher un artiste"
-          className={s.searchInput}
-          onKeyDown={onKeyDown}
-        />
       </section>
     </>
   );
