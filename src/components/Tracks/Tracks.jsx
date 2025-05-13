@@ -51,7 +51,7 @@ const Tracks = () => {
       // màj le store
       setTracks(_tracks);
 
-      console.log(_tracks);
+      // console.log(_tracks);
     } else {
       // erreurs
     }

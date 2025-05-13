@@ -20,7 +20,7 @@ const Track = ({ title, cover, src, duration, artists, index }) => {
   };
 
   return (
-    <div className={s.track} onClick={onClick}>
+    <div className={s.track} onClick={onClick} data-index={index}>
       <span className={s.order}>{index + 1}</span>
       <div className={s.title}>
         <img src={cover} alt="" className={s.cover} />

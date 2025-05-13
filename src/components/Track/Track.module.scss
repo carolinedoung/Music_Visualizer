@@ -6,6 +6,8 @@
   padding: 10px 0;
   padding-left: 10px;
   border-radius: 8px;
+  user-select: none;
+  cursor: pointer;
 
   &:hover {
     background-color: rgba(white, 0.1);

@@ -47,13 +47,13 @@ export default class Cover {
     // donner la texture au material
     // this.material.map = this.texture;
 
-    console.log(this.material.uniforms);
+    // console.log(this.material.uniforms);
     this.material.uniforms.uMap.value = this.texture;
 
     // force la recompilation du material
     this.material.needsUpdate = true;
 
-    console.log(this.texture);
+    // console.log(this.texture);
   }
 
   update(time) {

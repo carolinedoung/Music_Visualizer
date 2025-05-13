@@ -29,7 +29,7 @@ export default class LogoIut {
     scene.gltfLoader.load("/models/logo-iut.glb", (gltf) => {
       this.group = gltf.scene;
 
-      console.log(gltf.scene);
+      // console.log(gltf.scene);
 
       this.group.traverse((object) => {
         // s'assurer que l'objet est un mesh, qui peut recevoir un material
