@@ -6,10 +6,7 @@ const useStore = create((set) => ({
 
   // la liste processed par la librairie, et prête à être rendue dans le DOM
   tracks: [],
-  setTracks: (_tracks) =>
-    set(() => ({
-      tracks: _tracks,
-    })),
+  setTracks: (newTracks) => set({ tracks: newTracks })
 }));
 
 export default useStore;

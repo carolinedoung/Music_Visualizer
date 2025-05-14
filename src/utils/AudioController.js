@@ -3,138 +3,165 @@ import detect from "bpm-detective";
 
 class AudioController {
   constructor() {
-    // Initialiser les propriétés
+    // L'élément audio sera initialisé lors de l'appel à setup()
+    this.audio = null;
+    this.ctx = null;
+    this.audioSource = null;
+    this.analyserNode = null;
+    this.fdata = null;
     this.isPlaying = false;
+    this.bpm = 120; // Valeur par défaut
+    this.isSetup = false;
+    
+    // Informations sur les pistes
     this.currentTrackIndex = -1;
     this.trackList = [];
-    this.callbacks = {
-      onTrackChange: [],
-      onPlayStateChange: [],
-      onTimeUpdate: []
-    };
   }
 
   setup() {
+    // Ne pas réinitialiser si déjà configuré
+    if (this.isSetup) {
+      console.log("AudioController déjà initialisé");
+      return;
+    }
+    
+    console.log("Initialisation d'AudioController");
+    
+    // Créer le contexte audio
     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
 
+    // Créer l'élément audio
     this.audio = new Audio();
     this.audio.crossOrigin = "anonymous";
-    this.bpm = null;
     this.audio.volume = 0.1;
 
+    // Connecter l'audio au contexte
     this.audioSource = this.ctx.createMediaElementSource(this.audio);
-
+    
+    // Configurer l'analyseur
     this.analyserNode = new AnalyserNode(this.ctx, {
       fftSize: 1024,
       smoothingTimeConstant: 0.8,
     });
-
+    
+    // Tableau pour les données de fréquence
     this.fdata = new Uint8Array(this.analyserNode.frequencyBinCount);
 
+    // Connecter les nœuds
     this.audioSource.connect(this.analyserNode);
     this.audioSource.connect(this.ctx.destination);
 
-    // Ajouter des écouteurs d'événements
+    // Ajouter les écouteurs d'événements
     this.setupEventListeners();
 
+    // Démarrer la boucle de mise à jour
     gsap.ticker.add(this.tick);
+    
+    this.isSetup = true;
   }
 
   setupEventListeners() {
-    this.audio.addEventListener("loadeddata", async () => {
-      await this.detectBPM();
-    });
-
+    // Écouteurs pour les changements d'état de lecture
     this.audio.addEventListener("play", () => {
       this.isPlaying = true;
-      this.notifyPlayStateChange();
     });
 
     this.audio.addEventListener("pause", () => {
       this.isPlaying = false;
-      this.notifyPlayStateChange();
     });
 
     this.audio.addEventListener("ended", () => {
       this.isPlaying = false;
-      this.notifyPlayStateChange();
       
-      // Auto-play next track on end
+      // Lecture automatique de la piste suivante
       if (this.currentTrackIndex < this.trackList.length - 1) {
         this.next();
       }
     });
-
-    this.audio.addEventListener("timeupdate", () => {
-      this.notifyTimeUpdate();
+    
+    // Détecter le BPM lorsque les données sont chargées
+    this.audio.addEventListener("loadeddata", async () => {
+      await this.detectBPM();
     });
   }
 
-  // Définir la liste de lecture
+  // Définir la liste de pistes
   setTracks(tracks) {
     this.trackList = [...tracks];
     return this;
   }
 
-  // Jouer une piste à partir de son URL
+  // Jouer une piste
   play = (src, trackInfo = null) => {
+    // S'assurer que l'audio est initialisé
+    if (!this.isSetup) {
+      this.setup();
+    }
+    
+    if (!src) {
+      console.error("Source audio manquante");
+      return;
+    }
+    
+    console.log("Lecture de:", src);
+    
     // Si la même source est déjà chargée, juste reprendre la lecture
     if (this.audio.src === src && this.audio.paused) {
       this.resumePlayback();
       return;
     }
     
-    // Sinon, charger et jouer la nouvelle source
+    // Sinon, arrêter la lecture en cours et charger la nouvelle source
+    this.audio.pause();
     this.audio.src = src;
     
-    // Mettre à jour l'index de la piste courante si l'information est disponible
-    if (trackInfo && this.trackList.length > 0) {
+    // Mettre à jour l'index de la piste courante
+    if (this.trackList.length > 0) {
       const newIndex = this.trackList.findIndex(track => 
-        track.preview === src || 
-        (trackInfo.id && track.id === trackInfo.id)
+        track.preview === src || track.path === src
       );
       
       if (newIndex !== -1) {
         this.currentTrackIndex = newIndex;
-        this.notifyTrackChange();
-      }
-    } else if (this.trackList.length > 0) {
-      // Essayer de trouver la piste par son URL
-      const newIndex = this.trackList.findIndex(track => track.preview === src);
-      
-      if (newIndex !== -1) {
-        this.currentTrackIndex = newIndex;
-        this.notifyTrackChange();
       }
     }
     
-    this.audio.play().catch(error => {
-      console.error("Error playing audio:", error);
-    });
+    // Lecture avec gestion des erreurs
+    const playPromise = this.audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(error => {
+        console.error("Erreur lors de la lecture:", error);
+      });
+    }
   };
 
   // Mettre en pause
   pausePlayback = () => {
-    if (!this.audio.paused) {
+    if (this.audio && !this.audio.paused) {
       this.audio.pause();
     }
   };
 
   // Reprendre la lecture
   resumePlayback = () => {
-    if (this.audio.paused && this.audio.src) {
-      this.audio.play().catch(error => {
-        console.error("Error resuming playback:", error);
-      });
+    if (this.audio && this.audio.paused && this.audio.src) {
+      const playPromise = this.audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          console.error("Erreur lors de la reprise de la lecture:", error);
+        });
+      }
     }
   };
 
   // Alterner entre lecture et pause
   togglePlayPause = () => {
-    if (this.audio.paused) {
-      this.resumePlayback();
-    } else {
-      this.pausePlayback();
+    if (this.audio) {
+      if (this.audio.paused) {
+        this.resumePlayback();
+      } else {
+        this.pausePlayback();
+      }
     }
   };
 
@@ -143,7 +170,11 @@ class AudioController {
     if (this.trackList.length === 0 || this.currentTrackIndex === -1) return;
     
     const nextIndex = (this.currentTrackIndex + 1) % this.trackList.length;
-    this.playTrackAtIndex(nextIndex);
+    const nextTrack = this.trackList[nextIndex];
+    
+    if (nextTrack) {
+      this.play(nextTrack.preview || nextTrack.path);
+    }
   };
 
   // Revenir à la piste précédente
@@ -154,26 +185,13 @@ class AudioController {
     // sinon redémarrer la piste actuelle
     if (this.audio.currentTime < 3) {
       const prevIndex = (this.currentTrackIndex - 1 + this.trackList.length) % this.trackList.length;
-      this.playTrackAtIndex(prevIndex);
+      const prevTrack = this.trackList[prevIndex];
+      
+      if (prevTrack) {
+        this.play(prevTrack.preview || prevTrack.path);
+      }
     } else {
       this.audio.currentTime = 0;
-    }
-  };
-
-  // Jouer une piste à un index spécifique
-  playTrackAtIndex = (index) => {
-    if (index < 0 || index >= this.trackList.length) return;
-    
-    this.currentTrackIndex = index;
-    const track = this.trackList[index];
-    
-    if (track && track.preview) {
-      this.audio.src = track.preview;
-      this.audio.play().catch(error => {
-        console.error("Error playing track at index:", error);
-      });
-      
-      this.notifyTrackChange();
     }
   };
 
@@ -183,84 +201,41 @@ class AudioController {
     return this.trackList[this.currentTrackIndex];
   };
 
-  // Obtenir la durée actuelle et totale
-  getTime = () => {
-    return {
-      current: this.audio.currentTime,
-      duration: this.audio.duration || 0,
-      percentage: this.audio.duration 
-        ? (this.audio.currentTime / this.audio.duration) * 100 
-        : 0
-    };
-  };
-
-  // Définir la position de lecture
-  seekTo = (percentage) => {
-    if (this.audio.duration) {
-      this.audio.currentTime = (percentage / 100) * this.audio.duration;
-    }
-  };
-
-  // Régler le volume (0-1)
-  setVolume = (volume) => {
-    const clampedVolume = Math.max(0, Math.min(1, volume));
-    this.audio.volume = clampedVolume;
-  };
-
-  // Système d'événements
-  on = (event, callback) => {
-    if (this.callbacks[event]) {
-      this.callbacks[event].push(callback);
-    }
-    return this; // Pour le chaînage
-  };
-
-  off = (event, callback) => {
-    if (this.callbacks[event]) {
-      this.callbacks[event] = this.callbacks[event].filter(cb => cb !== callback);
-    }
-    return this; // Pour le chaînage
-  };
-
-  notifyTrackChange = () => {
-    const currentTrack = this.getCurrentTrack();
-    this.callbacks.onTrackChange.forEach(callback => callback(currentTrack, this.currentTrackIndex));
-  };
-
-  notifyPlayStateChange = () => {
-    this.callbacks.onPlayStateChange.forEach(callback => callback(this.isPlaying));
-  };
-
-  notifyTimeUpdate = () => {
-    const timeInfo = this.getTime();
-    this.callbacks.onTimeUpdate.forEach(callback => callback(timeInfo));
-  };
-
+  // Détection du BPM
   detectBPM = async () => {
     try {
-      // Create an offline audio context to process the data
+      if (!this.audio || !this.audio.src) return;
+      
+      // Créer un contexte audio hors-ligne
       const offlineCtx = new OfflineAudioContext(
         1,
         this.audio.duration * this.ctx.sampleRate,
         this.ctx.sampleRate
       );
-      // Decode the current audio data
-      const response = await fetch(this.audio.src); // Fetch the audio file
+      
+      // Récupérer les données audio
+      const response = await fetch(this.audio.src);
       const buffer = await response.arrayBuffer();
       const audioBuffer = await offlineCtx.decodeAudioData(buffer);
-      // Use bpm-detective to detect the BPM
+      
+      // Détecter le BPM
       this.bpm = detect(audioBuffer);
-      console.log(`Detected BPM: ${this.bpm}`);
+      console.log(`BPM détecté: ${this.bpm}`);
     } catch (error) {
-      console.error("Error detecting BPM:", error);
-      this.bpm = 120; // Fallback to a default BPM
+      console.error("Erreur lors de la détection du BPM:", error);
+      this.bpm = 120; // Valeur par défaut
     }
   };
 
+  // Mettre à jour les données de fréquence
   tick = () => {
-    this.analyserNode.getByteFrequencyData(this.fdata);
+    if (this.analyserNode && this.fdata) {
+      this.analyserNode.getByteFrequencyData(this.fdata);
+    }
   };
 }
 
+// Créer et exporter une instance unique
 const audioController = new AudioController();
+
 export default audioController;

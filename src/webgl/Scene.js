@@ -16,6 +16,7 @@ import Board from "./objects/Board";
 import LogoIut from "./objects/LogoIut";
 import Cover from "./objects/Cover";
 import audioController from "../utils/AudioController";
+import Heart from "./objects/Heart";
 import Cube from "./objects/Cube";
 
 class Scene {
@@ -119,7 +120,9 @@ class Scene {
     this.board = new Board();
     this.logoIut = new LogoIut();
     this.cover = new Cover();
+    this.heart = new Heart();
     // this.cube = new Cube();
+    
     // ....
 
     // ajout de l'objet à la scène par défaut
@@ -201,8 +204,15 @@ class Scene {
         this.camera.position.z = 20;
         this.currentObject = this.cover;
         break;
-      default:
-        break;
+      case 4:
+      this.bloomParams.threshold = 0.6;
+      this.bloomPass.threshold = 0.6;
+
+      this.camera.position.z = 5;
+      this.currentObject = this.heart;
+      break;
+    default:
+      break;
     }
 
     // on add le nouveau group
