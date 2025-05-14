@@ -9,7 +9,7 @@ Currently, two official plugins are available:
 
 
 # Added functionalities 
-- Plyercontrols
+- Playercontrols
 - Heart object
 - Improving searchbar
 - Added musics
